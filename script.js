@@ -223,6 +223,8 @@ function switchAuthTab(tab) {
         regTab.classList.remove('active');
         loginForm.style.display = 'block';
         regForm.style.display = 'none';
+        const resetForm = document.getElementById('reset-form-card');
+        if (resetForm) resetForm.style.display = 'none';
     } else {
         regTab.classList.add('active');
         loginTab.classList.remove('active');
@@ -315,69 +317,46 @@ async function handleRegister() {
     if (pwd !== pwd2) return toast('两次密码不一致');
 
     try {
-        // 1. 校验激活码
-        const codeRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}&select=*`,
-            { headers: SUPABASE_HEADERS }
-        );
-
-        if (!codeRes.ok) {
-            const errText = await codeRes.text();
-            console.error('Supabase code check error:', codeRes.status, errText);
-            return toast('验证失败 [' + codeRes.status + ']，请联系管理员');
+        // 1. 本地校验激活码（与QQ号算法匹配）
+        const expectedCode = generateCodeForQQ(qq);
+        if (code !== expectedCode) {
+            return toast('激活码与QQ号不匹配，或激活码无效');
         }
 
-        const codes = await codeRes.json();
-
-        if (codes.length === 0) {
-            return toast('激活码无效，请联系管理员');
-        }
-
-        const codeData = codes[0];
-        if (codeData.is_used) {
-            return toast('该激活码已被使用');
-        }
-        if (codeData.qq && codeData.qq !== qq) {
-            return toast('激活码与QQ号不匹配');
-        }
-
-        // 2. 检查 QQ 是否已注册
+        // 2. 检查QQ是否已注册
         const userRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&is_used=eq.true&select=*`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&select=*`,
             { headers: SUPABASE_HEADERS }
         );
-
-        if (!userRes.ok) {
-            const errText = await userRes.text();
-            console.error('Supabase user check error:', userRes.status, errText);
-            return toast('检查失败 [' + userRes.status + ']，请联系管理员');
+        if (userRes.ok) {
+            const users = await userRes.json();
+            if (users.length > 0) {
+                return toast('该账号已注册，请直接登录');
+            }
         }
 
-        const users = await userRes.json();
-        if (users.length > 0) {
-            return toast('该账号已注册，请直接登录');
-        }
-
-        // 3. 激活该码：绑定QQ并设置密码
-        const patchRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}`,
+        // 3. 直接插入新行
+        const insertRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/vip_keys`,
             {
-                method: 'PATCH',
+                method: 'POST',
                 headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ is_used: true, qq: qq, password: pwd })
+                body: JSON.stringify({ code: code, qq: qq, password: pwd, is_used: true })
             }
         );
 
-        if (!patchRes.ok) {
-            const errText = await patchRes.text();
-            console.error('Supabase activate error:', patchRes.status, errText);
-            return toast('注册失败 [' + patchRes.status + ']，请联系管理员');
+        if (!insertRes.ok) {
+            const errText = await insertRes.text();
+            console.error('Supabase register error:', insertRes.status, errText);
+            if (insertRes.status === 409) return toast('该QQ号或激活码已被注册');
+            return toast('注册失败 [' + insertRes.status + ']，请联系管理员');
         }
 
         toast('注册成功！请返回登录 ₍˄·͈༝·˄˄₎');
         setTimeout(() => switchAuthTab('login'), 1200);
 
     } catch (e) {
+        console.error('Register error:', e);
         toast('网络错误，请稍后重试');
     }
 }
@@ -404,27 +383,24 @@ async function handleResetPwd() {
     if (newPwd !== newPwd2) return toast('两次密码不一致');
 
     try {
-        // 验证激活码与QQ匹配
-        const codeRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}&is_used=eq.true&select=*`,
-            { headers: SUPABASE_HEADERS }
-        );
-
-        if (!codeRes.ok) {
-            return toast('验证失败 [' + codeRes.status + ']');
-        }
-
-        const codes = await codeRes.json();
-        if (codes.length === 0) {
-            return toast('激活码无效或未激活');
-        }
-        if (codes[0].qq !== qq) {
+        // 1. 本地校验激活码
+        const expectedCode = generateCodeForQQ(qq);
+        if (code !== expectedCode) {
             return toast('激活码与QQ号不匹配');
         }
 
-        // 更新密码
+        // 2. 确认QQ已注册
+        const userRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&select=*`,
+            { headers: SUPABASE_HEADERS }
+        );
+        if (!userRes.ok) return toast('验证失败 [' + userRes.status + ']');
+        const users = await userRes.json();
+        if (users.length === 0) return toast('账号不存在，请先注册');
+
+        // 3. 更新密码
         const patchRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}&is_used=eq.true`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}`,
             {
                 method: 'PATCH',
                 headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
