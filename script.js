@@ -193,12 +193,12 @@ async function checkAndShowActivation() {
     if (savedQQ && savedPass) {
         try {
             const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(savedQQ)}&select=*`,
+                `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(savedQQ)}&is_used=eq.true&select=*`,
                 { headers: SUPABASE_HEADERS }
             );
             if (res.ok) {
-                const users = await res.json();
-                if (users.length === 1 && users[0].password === savedPass) {
+                const rows = await res.json();
+                if (rows.length === 1 && rows[0].password === savedPass) {
                     localStorage.setItem('app_login_state', 'logged_in');
                     if (overlay) overlay.style.display = 'none';
                     return;
@@ -267,23 +267,22 @@ async function handleLogin() {
 
     try {
         const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(account)}&select=*`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(account)}&is_used=eq.true&select=*`,
             { headers: SUPABASE_HEADERS }
         );
 
         if (!res.ok) {
-            const errText = await res.text();
-            console.error('Supabase login error:', res.status, errText);
-            return toast('登录失败 [' + res.status + ']，请联系管理员');
+            console.error('Login error:', res.status);
+            return toast('登录失败 [' + res.status + ']');
         }
 
-        const users = await res.json();
+        const rows = await res.json();
 
-        if (users.length === 0) {
+        if (rows.length === 0 || !rows[0].password) {
             return toast('账号不存在');
         }
 
-        if (users[0].password !== password) {
+        if (rows[0].password !== password) {
             return toast('密码错误');
         }
 
@@ -318,7 +317,7 @@ async function handleRegister() {
     try {
         // 1. 校验激活码
         const codeRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/activation_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}&select=*`,
             { headers: SUPABASE_HEADERS }
         );
 
@@ -335,7 +334,7 @@ async function handleRegister() {
         }
 
         const codeData = codes[0];
-        if (codeData.used) {
+        if (codeData.is_used) {
             return toast('该激活码已被使用');
         }
         if (codeData.qq && codeData.qq !== qq) {
@@ -344,7 +343,7 @@ async function handleRegister() {
 
         // 2. 检查 QQ 是否已注册
         const userRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(qq)}&select=*`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&is_used=eq.true&select=*`,
             { headers: SUPABASE_HEADERS }
         );
 
@@ -359,36 +358,21 @@ async function handleRegister() {
             return toast('该账号已注册，请直接登录');
         }
 
-        // 3. 创建用户
-        const createRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/users`,
-            {
-                method: 'POST',
-                headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({
-                    qq: qq,
-                    password: pwd,
-                    activation_code: code,
-                    created_at: new Date().toISOString()
-                })
-            }
-        );
-
-        if (!createRes.ok) {
-            const errText = await createRes.text();
-            console.error('Supabase create user error:', createRes.status, errText);
-            return toast('注册失败 [' + createRes.status + ']，请联系管理员');
-        }
-
-        // 4. 标记激活码已使用
-        await fetch(
-            `${SUPABASE_URL}/rest/v1/activation_codes?code=eq.${encodeURIComponent(code)}`,
+        // 3. 激活该码：绑定QQ并设置密码
+        const patchRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}`,
             {
                 method: 'PATCH',
                 headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ used: true, bound_qq: qq })
+                body: JSON.stringify({ is_used: true, qq: qq, password: pwd })
             }
         );
+
+        if (!patchRes.ok) {
+            const errText = await patchRes.text();
+            console.error('Supabase activate error:', patchRes.status, errText);
+            return toast('注册失败 [' + patchRes.status + ']，请联系管理员');
+        }
 
         toast('注册成功！请返回登录 ₍˄·͈༝·˄˄₎');
         setTimeout(() => switchAuthTab('login'), 1200);
@@ -422,7 +406,7 @@ async function handleResetPwd() {
     try {
         // 验证旧密码
         const userRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(qq)}&select=*`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&is_used=eq.true&select=*`,
             { headers: SUPABASE_HEADERS }
         );
 
@@ -440,7 +424,7 @@ async function handleResetPwd() {
 
         // 更新密码
         const patchRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(qq)}`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&is_used=eq.true`,
             {
                 method: 'PATCH',
                 headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
