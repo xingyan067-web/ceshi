@@ -393,38 +393,38 @@ function showResetPwd() {
 
 async function handleResetPwd() {
     const qq = document.getElementById('reset-qq').value.trim();
-    const oldPwd = document.getElementById('reset-old-pwd').value.trim();
+    const code = document.getElementById('reset-code').value.trim();
     const newPwd = document.getElementById('reset-new-pwd').value.trim();
     const newPwd2 = document.getElementById('reset-new-pwd2').value.trim();
 
     if (!qq) return toast('请输入QQ号');
-    if (!oldPwd) return toast('请输入旧密码');
+    if (!code) return toast('请输入激活码');
     if (!newPwd) return toast('请输入新密码');
     if (newPwd.length < 6) return toast('新密码至少6位');
     if (newPwd !== newPwd2) return toast('两次密码不一致');
 
     try {
-        // 验证旧密码
-        const userRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&is_used=eq.true&select=*`,
+        // 验证激活码与QQ匹配
+        const codeRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}&is_used=eq.true&select=*`,
             { headers: SUPABASE_HEADERS }
         );
 
-        if (!userRes.ok) {
-            return toast('验证失败 [' + userRes.status + ']');
+        if (!codeRes.ok) {
+            return toast('验证失败 [' + codeRes.status + ']');
         }
 
-        const users = await userRes.json();
-        if (users.length === 0) {
-            return toast('账号不存在');
+        const codes = await codeRes.json();
+        if (codes.length === 0) {
+            return toast('激活码无效或未激活');
         }
-        if (users[0].password !== oldPwd) {
-            return toast('旧密码错误');
+        if (codes[0].qq !== qq) {
+            return toast('激活码与QQ号不匹配');
         }
 
         // 更新密码
         const patchRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/vip_keys?qq=eq.${encodeURIComponent(qq)}&is_used=eq.true`,
+            `${SUPABASE_URL}/rest/v1/vip_keys?code=eq.${encodeURIComponent(code)}&is_used=eq.true`,
             {
                 method: 'PATCH',
                 headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
