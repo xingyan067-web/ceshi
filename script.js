@@ -212,7 +212,7 @@ async function checkAndShowActivation() {
 
 // ===== UI 交互 =====
 
-function switchTab(tab) {
+function switchAuthTab(tab) {
     const loginTab = document.getElementById('tab-login');
     const regTab = document.getElementById('tab-register');
     const loginForm = document.getElementById('login-form-card');
@@ -271,7 +271,11 @@ async function handleLogin() {
             { headers: SUPABASE_HEADERS }
         );
 
-        if (!res.ok) throw new Error('network');
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error('Supabase login error:', res.status, errText);
+            return toast('登录失败 [' + res.status + ']，请联系管理员');
+        }
 
         const users = await res.json();
 
@@ -293,6 +297,7 @@ async function handleLogin() {
         toast('登录成功 (´▽`ʃ♡ƪ)');
 
     } catch (e) {
+        console.error('Login error:', e);
         toast('网络错误，请稍后重试');
     }
 }
@@ -317,7 +322,11 @@ async function handleRegister() {
             { headers: SUPABASE_HEADERS }
         );
 
-        if (!codeRes.ok) throw new Error('network');
+        if (!codeRes.ok) {
+            const errText = await codeRes.text();
+            console.error('Supabase code check error:', codeRes.status, errText);
+            return toast('验证失败 [' + codeRes.status + ']，请联系管理员');
+        }
 
         const codes = await codeRes.json();
 
@@ -339,7 +348,11 @@ async function handleRegister() {
             { headers: SUPABASE_HEADERS }
         );
 
-        if (!userRes.ok) throw new Error('network');
+        if (!userRes.ok) {
+            const errText = await userRes.text();
+            console.error('Supabase user check error:', userRes.status, errText);
+            return toast('检查失败 [' + userRes.status + ']，请联系管理员');
+        }
 
         const users = await userRes.json();
         if (users.length > 0) {
@@ -361,7 +374,11 @@ async function handleRegister() {
             }
         );
 
-        if (!createRes.ok) throw new Error('network');
+        if (!createRes.ok) {
+            const errText = await createRes.text();
+            console.error('Supabase create user error:', createRes.status, errText);
+            return toast('注册失败 [' + createRes.status + ']，请联系管理员');
+        }
 
         // 4. 标记激活码已使用
         await fetch(
@@ -374,9 +391,74 @@ async function handleRegister() {
         );
 
         toast('注册成功！请返回登录 ₍˄·͈༝·˄˄₎');
-        setTimeout(() => switchTab('login'), 1200);
+        setTimeout(() => switchAuthTab('login'), 1200);
 
     } catch (e) {
+        toast('网络错误，请稍后重试');
+    }
+}
+
+// ===== 重置密码 =====
+function showResetPwd() {
+    document.getElementById('login-form-card').style.display = 'none';
+    document.getElementById('reg-form-card').style.display = 'none';
+    document.getElementById('reset-form-card').style.display = 'block';
+    document.getElementById('tab-login').classList.remove('active');
+    document.getElementById('tab-register').classList.remove('active');
+}
+
+async function handleResetPwd() {
+    const qq = document.getElementById('reset-qq').value.trim();
+    const oldPwd = document.getElementById('reset-old-pwd').value.trim();
+    const newPwd = document.getElementById('reset-new-pwd').value.trim();
+    const newPwd2 = document.getElementById('reset-new-pwd2').value.trim();
+
+    if (!qq) return toast('请输入QQ号');
+    if (!oldPwd) return toast('请输入旧密码');
+    if (!newPwd) return toast('请输入新密码');
+    if (newPwd.length < 6) return toast('新密码至少6位');
+    if (newPwd !== newPwd2) return toast('两次密码不一致');
+
+    try {
+        // 验证旧密码
+        const userRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(qq)}&select=*`,
+            { headers: SUPABASE_HEADERS }
+        );
+
+        if (!userRes.ok) {
+            return toast('验证失败 [' + userRes.status + ']');
+        }
+
+        const users = await userRes.json();
+        if (users.length === 0) {
+            return toast('账号不存在');
+        }
+        if (users[0].password !== oldPwd) {
+            return toast('旧密码错误');
+        }
+
+        // 更新密码
+        const patchRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(qq)}`,
+            {
+                method: 'PATCH',
+                headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ password: newPwd })
+            }
+        );
+
+        if (!patchRes.ok) {
+            return toast('重置失败 [' + patchRes.status + ']');
+        }
+
+        // 同步更新本地存储
+        localStorage.setItem('app_pass', newPwd);
+        toast('密码重置成功！请返回登录');
+        setTimeout(() => switchAuthTab('login'), 1200);
+
+    } catch (e) {
+        console.error('Reset error:', e);
         toast('网络错误，请稍后重试');
     }
 }

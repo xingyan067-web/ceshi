@@ -95,10 +95,11 @@
       .sc-hero-star {
         position: absolute;
         top: -16px;
-        left: -16px;
+        left: 50px;
         width: 130px;
         height: 130px;
         background: #f4f4f4;
+        transform: rotate(-12deg);
         clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
         z-index: 0;
       }
@@ -154,7 +155,7 @@
         transform: rotate(-38deg);
       }
 
-      .sc-hero-right { flex: 1; min-width: 0; }
+      .sc-hero-right { flex: 1; min-width: 0; position: relative; z-index: 1; }
 
       .sc-breadcrumb {
         font-family: 'Courier New', 'Source Code Pro', monospace;
@@ -386,7 +387,7 @@
       }
 
       /* 面板切换 */
-      #reg-form-card { display: none; }
+      #reg-form-card, #reset-form-card { display: none; }
     </style>
 
 </head>
@@ -442,8 +443,8 @@
 
                 <!-- Tab 切换 -->
                 <div class="sc-tabs">
-                    <div class="sc-tab active" id="tab-login" onclick="switchTab('login')">Login</div>
-                    <div class="sc-tab" id="tab-register" onclick="switchTab('register')">Register</div>
+                    <div class="sc-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</div>
+                    <div class="sc-tab" id="tab-register" onclick="switchAuthTab('register')">Register</div>
                 </div>
 
                 <!-- 登录表单 -->
@@ -474,7 +475,7 @@
                             <span><div class="sc-check-label">显示密码</div><div class="sc-check-sublabel">Show password</div></span>
                         </label>
                         <div class="sc-form-footer">
-                            <span class="sc-footer-link">忘了密码？</span>
+                            <span class="sc-footer-link" onclick="showResetPwd()">忘了密码？</span>
                             <button class="sc-btn-submit" onclick="handleLogin()">登 录</button>
                         </div>
                     </div>
@@ -521,8 +522,55 @@
                             </span>
                         </div>
                         <div class="sc-form-footer">
-                            <span class="sc-footer-link" onclick="switchTab('login')">&#8592; 返回登录</span>
+                            <span class="sc-footer-link" onclick="switchAuthTab('login')">&#8592; 返回登录</span>
                             <button class="sc-btn-submit" onclick="handleRegister()">注 册</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 重置密码表单 -->
+                <div class="sc-form-card" id="reset-form-card">
+                    <div class="sc-form-title">+ Reset Password</div>
+                    <div class="sc-form-body">
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3.6-8 8-8s8 3 8 8"/></svg>
+                            </span>
+                            <input type="text" id="reset-qq" placeholder="QQ 号">
+                            <span class="sc-input-clear" onclick="clearInput('reset-qq')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="16" r="1"/><line x1="12" y1="6" x2="12" y2="11"/></svg>
+                            </span>
+                            <input type="password" id="reset-old-pwd" placeholder="旧密码">
+                            <span class="sc-input-clear" onclick="clearInput('reset-old-pwd')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="16" r="1"/><line x1="12" y1="6" x2="12" y2="11"/></svg>
+                            </span>
+                            <input type="password" id="reset-new-pwd" placeholder="新密码">
+                            <span class="sc-input-clear" onclick="clearInput('reset-new-pwd')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><polyline points="7 15 11 19 17 11"/></svg>
+                            </span>
+                            <input type="password" id="reset-new-pwd2" placeholder="确认新密码">
+                            <span class="sc-input-clear" onclick="clearInput('reset-new-pwd2')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-form-footer">
+                            <span class="sc-footer-link" onclick="switchAuthTab('login')">&#8592; 返回登录</span>
+                            <button class="sc-btn-submit" onclick="handleResetPwd()">重 置</button>
                         </div>
                     </div>
                 </div>
