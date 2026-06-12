@@ -29,7 +29,366 @@
     <!-- 👇 新增：Mammoth.js 用于解析 DOCX 文件 👇 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
-    
+
+    <style>
+      /* ===== 登录/注册 · 黑白极简手账风 ===== */
+      .scrapbook-wrapper {
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto;
+      }
+
+      .binder-tabs {
+        display: flex;
+        gap: 24px;
+        padding: 0 20px;
+        margin-bottom: -8px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .binder-tab {
+        width: 32px;
+        height: 18px;
+        background: #ffffff;
+        border: 1px solid #f0f0f0;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        position: relative;
+      }
+
+      .binder-tab::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1.5px solid #e0e0e0;
+        background: #fafafa;
+      }
+
+      .sc-card {
+        background: #ffffff;
+        border: 1px solid #eaeaea;
+        border-radius: 2px;
+        padding: 36px 28px 30px;
+        box-shadow: 0 2px 24px rgba(0,0,0,0.04);
+      }
+
+      .sc-hero {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        margin-bottom: 32px;
+      }
+
+      .sc-hero-left {
+        position: relative;
+        width: 120px;
+        height: 130px;
+        flex-shrink: 0;
+      }
+
+      .sc-hero-star {
+        position: absolute;
+        top: -16px;
+        left: -16px;
+        width: 130px;
+        height: 130px;
+        background: #f4f4f4;
+        clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        z-index: 0;
+      }
+
+      .sc-polaroid {
+        position: absolute;
+        top: 8px;
+        left: 15px;
+        width: 84px;
+        height: 100px;
+        background: #fff;
+        border: 1px solid #e8e8e8;
+        box-shadow: 3px 4px 12px rgba(0,0,0,0.08);
+        transform: rotate(-6deg);
+        z-index: 1;
+        padding: 6px 6px 0;
+      }
+
+      .sc-polaroid-img {
+        width: 100%;
+        height: 60px;
+        background: #f9f9f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sc-polaroid-img svg {
+        width: 36px;
+        height: 36px;
+        color: #ccc;
+        stroke: #bbb;
+      }
+
+      .sc-polaroid-bottom {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Courier New', monospace;
+        font-size: 8px;
+        color: #aaa;
+        letter-spacing: 1px;
+      }
+
+      .sc-paperclip {
+        position: absolute;
+        top: -12px;
+        left: -6px;
+        width: 22px;
+        height: 36px;
+        z-index: 3;
+        transform: rotate(-38deg);
+      }
+
+      .sc-hero-right { flex: 1; min-width: 0; }
+
+      .sc-breadcrumb {
+        font-family: 'Courier New', 'Source Code Pro', monospace;
+        font-size: 9px;
+        color: #aaa;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+
+      .sc-breadcrumb span { color: #555; }
+
+      .sc-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #222;
+        letter-spacing: 2px;
+        margin-bottom: 4px;
+      }
+
+      .sc-sub {
+        font-family: 'Courier New', 'Source Code Pro', monospace;
+        font-size: 10px;
+        color: #999;
+        letter-spacing: 1px;
+        font-style: italic;
+      }
+
+      .sc-sig {
+        font-family: 'Courier New', 'Source Code Pro', monospace;
+        font-size: 9px;
+        color: #888;
+        margin-top: 8px;
+        letter-spacing: 1px;
+      }
+
+      .sc-tabs {
+        display: flex;
+        gap: 28px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 0;
+      }
+
+      .sc-tab {
+        font-size: 13px;
+        font-weight: 500;
+        color: #bbb;
+        cursor: pointer;
+        padding-bottom: 8px;
+        letter-spacing: 1px;
+        transition: color 0.2s;
+        position: relative;
+        user-select: none;
+      }
+
+      .sc-tab.active {
+        color: #222;
+      }
+
+      .sc-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #222;
+      }
+
+      .sc-form-card {
+        border: 1px solid #eaeaea;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      .sc-form-title {
+        background: #fafafa;
+        padding: 8px 16px;
+        font-family: 'Courier New', 'Source Code Pro', monospace;
+        font-size: 10px;
+        color: #888;
+        letter-spacing: 2px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .sc-form-body { padding: 20px 16px 16px; }
+
+      .sc-input-wrap {
+        position: relative;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+      }
+
+      .sc-input-wrap .sc-input-icon {
+        position: absolute;
+        left: 14px;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        pointer-events: none;
+      }
+
+      .sc-input-wrap input {
+        width: 100%;
+        padding: 13px 42px 13px 40px;
+        border: 1px solid #eaeaea;
+        border-radius: 20px;
+        background: #fff;
+        font-size: 13px;
+        color: #333;
+        outline: none;
+        transition: border-color 0.25s, box-shadow 0.25s;
+        letter-spacing: 0.5px;
+      }
+
+      .sc-input-wrap input::placeholder { color: #ccc; font-weight: 300; }
+      .sc-input-wrap input:focus {
+        border-color: #888;
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.04);
+      }
+
+      .sc-input-clear {
+        position: absolute;
+        right: 12px;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #eee;
+        transition: background 0.2s;
+        z-index: 2;
+      }
+
+      .sc-input-clear:hover { background: #ddd; }
+
+      .sc-input-wrap input:not(:placeholder-shown) ~ .sc-input-clear {
+        display: flex;
+      }
+
+      .sc-check-wrap {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+        margin-bottom: 2px;
+      }
+
+      .sc-check-wrap input[type=checkbox] { display: none; }
+
+      .sc-check-box {
+        width: 18px;
+        height: 18px;
+        border: 1.5px solid #d0d0d0;
+        border-radius: 3px;
+        flex-shrink: 0;
+        margin-top: 1px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .sc-check-wrap input:checked + .sc-check-box {
+        background: #222;
+        border-color: #222;
+      }
+
+      .sc-check-wrap input:checked + .sc-check-box::after {
+        content: '';
+        width: 5px;
+        height: 9px;
+        border: solid #fff;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg) translateY(-1px);
+      }
+
+      .sc-check-label { font-size: 12px; color: #444; font-weight: 500; letter-spacing: 0.5px; }
+      .sc-check-sublabel { font-size: 10px; color: #bbb; font-family: 'Courier New', monospace; letter-spacing: 0.5px; }
+
+      .sc-form-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 16px;
+      }
+
+      .sc-footer-link {
+        font-size: 11px;
+        color: #888;
+        cursor: pointer;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 1px;
+        transition: color 0.2s, border-color 0.2s;
+        font-family: 'Courier New', monospace;
+        user-select: none;
+      }
+
+      .sc-footer-link:hover { color: #333; border-color: #666; }
+
+      .sc-btn-submit {
+        padding: 12px 32px;
+        background: #222;
+        color: #fff;
+        border: none;
+        border-radius: 22px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .sc-btn-submit:hover { background: #000; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+      .sc-btn-submit:active { transform: scale(0.97); }
+
+      .sc-tagline {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 10px;
+        color: #ccc;
+        letter-spacing: 2px;
+        font-family: 'Courier New', monospace;
+      }
+
+      /* 面板切换 */
+      #reg-form-card { display: none; }
+    </style>
+
 </head>
 <body> <!-- 加上这一行 -->
     
@@ -42,49 +401,141 @@
     <!-- 👆 新增结束 👆 -->
 
     <div id="activation-overlay">
-        <div class="activation-box">
-            <h2>WELCOME</h2>
-            <p>请输入授权的QQ号和激活码</p>
-            
-            <div class="input-group">
-                <label for="qq-input">QQ 号</label>
-                <input type="number" id="qq-input" placeholder="输入您的QQ号">
+        <div class="scrapbook-wrapper">
+            <!-- 活页装订孔 -->
+            <div class="binder-tabs">
+                <div class="binder-tab"></div><div class="binder-tab"></div><div class="binder-tab"></div>
+                <div class="binder-tab"></div><div class="binder-tab"></div><div class="binder-tab"></div>
             </div>
-            
-            <div class="input-group">
-                <label for="code-input" style="display: flex; align-items: center; gap: 6px;">
-                    激活码
-                    <span onclick="showVpnModal()" style="display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #7d5a5e; font-size: 10px; cursor: pointer; color: #7d5a5e;" title="无法连接网络？">?</span>
-                </label>
-                <input type="text" id="code-input" placeholder="输入激活验证码">
+
+            <!-- 卡片主体 -->
+            <div class="sc-card">
+
+                <!-- 头部：左图右文 -->
+                <div class="sc-hero">
+                    <div class="sc-hero-left">
+                        <div class="sc-hero-star"></div>
+                        <div class="sc-polaroid">
+                            <div class="sc-paperclip">
+                                <svg viewBox="0 0 22 36" fill="none" stroke="#888" stroke-width="2">
+                                    <path d="M11 2 L11 32 Q11 35 8 35 Q5 35 5 32 L5 7 Q5 4 8 4 Q11 4 11 7 L11 27"/>
+                                </svg>
+                            </div>
+                            <div class="sc-polaroid-img">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5">
+                                    <rect x="2" y="6" width="20" height="15" rx="3"/>
+                                    <circle cx="12" cy="13.5" r="4"/>
+                                    <circle cx="12" cy="13.5" r="1.5" fill="#bbb"/>
+                                    <circle cx="7" cy="9.5" r="0.8" fill="#bbb"/>
+                                </svg>
+                            </div>
+                            <div class="sc-polaroid-bottom">snapshot_01</div>
+                        </div>
+                    </div>
+                    <div class="sc-hero-right">
+                        <div class="sc-breadcrumb">Homepage <span style="color:#ccc;">></span> <span>About Me</span></div>
+                        <div class="sc-title">小元机 ₍ᐢ.ˬ.ᐢ₎</div>
+                        <div class="sc-sub">Mobile Diary &middot; Personal Space</div>
+                        <div class="sc-sig">&mdash; yours, always.</div>
+                    </div>
+                </div>
+
+                <!-- Tab 切换 -->
+                <div class="sc-tabs">
+                    <div class="sc-tab active" id="tab-login" onclick="switchTab('login')">Login</div>
+                    <div class="sc-tab" id="tab-register" onclick="switchTab('register')">Register</div>
+                </div>
+
+                <!-- 登录表单 -->
+                <div class="sc-form-card" id="login-form-card">
+                    <div class="sc-form-title">+ Login Info</div>
+                    <div class="sc-form-body">
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3.6-8 8-8s8 3 8 8"/></svg>
+                            </span>
+                            <input type="text" id="login-account" placeholder="账号">
+                            <span class="sc-input-clear" onclick="clearInput('login-account')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="16" r="1"/><line x1="12" y1="6" x2="12" y2="11"/></svg>
+                            </span>
+                            <input type="password" id="login-password" placeholder="密码">
+                            <span class="sc-input-clear" onclick="clearInput('login-password')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <label class="sc-check-wrap">
+                            <input type="checkbox" onchange="togglePass('login-password', this)">
+                            <span class="sc-check-box"></span>
+                            <span><div class="sc-check-label">显示密码</div><div class="sc-check-sublabel">Show password</div></span>
+                        </label>
+                        <div class="sc-form-footer">
+                            <span class="sc-footer-link">忘了密码？</span>
+                            <button class="sc-btn-submit" onclick="handleLogin()">登 录</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 注册表单 -->
+                <div class="sc-form-card" id="reg-form-card">
+                    <div class="sc-form-title">+ Register Info</div>
+                    <div class="sc-form-body">
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="3"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="14" y2="13"/></svg>
+                            </span>
+                            <input type="number" id="reg-qq" placeholder="QQ 号">
+                            <span class="sc-input-clear" onclick="clearInput('reg-qq')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="9" width="18" height="12" rx="2"/><circle cx="8" cy="13" r="1.5"/><circle cx="12" cy="13" r="1.5"/><circle cx="16" cy="13" r="1.5"/></svg>
+                            </span>
+                            <input type="text" id="reg-code" placeholder="激活码">
+                            <span class="sc-input-clear" onclick="clearInput('reg-code')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="16" r="1"/><line x1="12" y1="6" x2="12" y2="11"/></svg>
+                            </span>
+                            <input type="password" id="reg-password" placeholder="设置密码">
+                            <span class="sc-input-clear" onclick="clearInput('reg-password')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-input-wrap">
+                            <span class="sc-input-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><polyline points="7 15 11 19 17 11"/></svg>
+                            </span>
+                            <input type="password" id="reg-password-confirm" placeholder="确认密码">
+                            <span class="sc-input-clear" onclick="clearInput('reg-password-confirm')">
+                                <svg viewBox="0 0 24 24" width="10" height="10" stroke="#888" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </span>
+                        </div>
+                        <div class="sc-form-footer">
+                            <span class="sc-footer-link" onclick="switchTab('login')">&#8592; 返回登录</span>
+                            <button class="sc-btn-submit" onclick="handleRegister()">注 册</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            
-            <!-- 低饱和渐变粉色按钮 -->
-            <button class="bingo-btn" onclick="verifyActivation()">
-                BINGO (´・ω・)ﾉ
-            </button>
-            
-            <div class="activation-footer">
-                一机一码 · 保护好我呀〒_〒<br>
-                请联系管理员获取专属码
-            </div>
-        </div>
-    </div>
-    <!-- VPN 快捷登录弹窗 -->
-    <div id="vpn-modal" class="wc-modal hidden" style="z-index: 100000; align-items: center; justify-content: center;">
-        <div class="wc-modal-content" style="width: 80%; max-width: 300px; border-radius: 16px; padding: 20px; background: #FFF; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #111;">快捷登录</h3>
-            <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5;">登陆失败的可以尝试这个哦₍^˶ ╸𖥦  ╸˵^₎⟆</p>
-            <div style="display: flex; gap: 10px;">
-                <button class="wc-btn-secondary" style="flex: 1; margin: 0; border-radius: 12px; padding: 10px; font-weight: bold;" onclick="hideVpnModal()">取消</button>
-                <button class="wc-btn-primary" style="flex: 1; margin: 0; border-radius: 12px; padding: 10px; background: #111; font-weight: bold;" onclick="quickLogin()">快捷登录</button>
-            </div>
+
+            <div class="sc-tagline">一机一码 &middot; 保护好我呀</div>
         </div>
     </div>
 
-    <!-- 【修复】：立即执行脚本，兼容 V2 新密钥，彻底解决刷新闪烁 -->
+    <!-- 激活状态预检查 -->
     <script>
-        if (localStorage.getItem('ios_theme_activation_v2_fallback') === 'true' || localStorage.getItem('isActivated_qq_bound_v1') === 'true') {
+        if (localStorage.getItem('app_login_state') === 'logged_in') {
             document.getElementById('activation-overlay').style.display = 'none';
         }
     </script>

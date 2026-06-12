@@ -165,202 +165,243 @@ function initStandaloneMode() {
 // 立即执行检测
 initStandaloneMode();
 
-// --- 激活码逻辑 (V2强制重新激活版) ---
+// --- 登录/注册系统 (Supabase) ---
 
+const SUPABASE_URL = 'https://ofsvczapcsudymnijjrq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_IbfurTy7b2S3SnmnhDqL7Q_vFfQi9PA';
+const SUPABASE_HEADERS = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json'
+};
 
 /**
- * 检查、生成并显示激活状态
+ * 检查登录状态，决定是否显示登录页
  */
 async function checkAndShowActivation() {
     const overlay = document.getElementById('activation-overlay');
+    const loginState = localStorage.getItem('app_login_state');
 
-    // 1. 优先检查 localStorage (改用 V2 的 Key)
-    if (localStorage.getItem('ios_theme_activation_v2_fallback') === 'true') {
+    if (loginState === 'logged_in') {
         if (overlay) overlay.style.display = 'none';
         return;
     }
 
-    // 2. 尝试查询 IndexedDB (改用 V2 的 Key)
-    try {
-        const idbPromise = idb.get('ios_theme_activation_v2_status');
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
-        const activationStatus = await Promise.race([idbPromise, timeoutPromise]);
-        
-        if (activationStatus && activationStatus.activated) {
-            localStorage.setItem('ios_theme_activation_v2_fallback', 'true');
-            if (overlay) overlay.style.display = 'none';
-            return;
-        }
-    } catch (e) {
-        console.warn("数据库读取超时或为空，继续显示激活页");
+    // 尝试从 Supabase 恢复会话
+    const savedQQ = localStorage.getItem('app_qq');
+    const savedPass = localStorage.getItem('app_pass');
+    if (savedQQ && savedPass) {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(savedQQ)}&select=*`,
+                { headers: SUPABASE_HEADERS }
+            );
+            if (res.ok) {
+                const users = await res.json();
+                if (users.length === 1 && users[0].password === savedPass) {
+                    localStorage.setItem('app_login_state', 'logged_in');
+                    if (overlay) overlay.style.display = 'none';
+                    return;
+                }
+            }
+        } catch (e) {}
     }
 
-    // 3. 如果都没激活，显示激活页面
     if (overlay) overlay.style.display = 'flex';
 }
 
-/**
- * 验证用户输入的激活码
- */
-// 获取或生成当前设备的唯一 ID
-function getDeviceId() {
-    let deviceId = localStorage.getItem('ios_theme_device_id');
-    if (!deviceId) {
-        deviceId = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-        localStorage.setItem('ios_theme_device_id', deviceId);
-    }
-    return deviceId;
-}
+// ===== UI 交互 =====
 
-// 替换原来的 verifyActivation 函数
-function verifyActivation() {
-    const btn = document.querySelector('.bingo-btn');
-    const originalText = btn.innerText;
-    btn.innerText = "验证中...";
-    btn.disabled = true;
+function switchTab(tab) {
+    const loginTab = document.getElementById('tab-login');
+    const regTab = document.getElementById('tab-register');
+    const loginForm = document.getElementById('login-form-card');
+    const regForm = document.getElementById('reg-form-card');
 
-    setTimeout(async () => {
-        try {
-            const qq = document.getElementById('qq-input').value.trim();
-            const userCode = document.getElementById('code-input').value.trim();
-            const deviceId = getDeviceId();
-
-            if (!qq || !userCode) {
-                alert('请输入QQ号和激活码。');
-                resetBtn();
-                return;
-            }
-
-            // 👇 把这里的网址替换成你刚才在 Cloudflare 部署成功后得到的网址 👇
-            const API_URL = 'https://activation-api.xingyan067.workers.dev/verify';
-
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ qq: qq, code: userCode, deviceId: deviceId })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // 验证通过，且设备未超限
-                localStorage.setItem('ios_theme_activation_v2_fallback', 'true');
-                localStorage.setItem('current_bound_qq', qq); // 记录当前QQ，解绑时用
-                localStorage.setItem('current_activation_code', userCode); // 👈 新增：记录激活码，用于云端备份验证
-                
-                const overlay = document.getElementById('activation-overlay');
-                if (overlay) overlay.style.display = 'none';
-                
-                alert(data.message || '激活成功！欢迎使用。');
-
-                try {
-                    await idb.set('ios_theme_activation_v2_status', {
-                        activated: true,
-                        qq: qq,
-                        activationTime: new Date().toISOString()
-                    });
-                } catch (dbError) {}
-            } else {
-                // 验证失败（码错，或者设备超限）
-                alert(data.message || '激活失败！');
-                resetBtn();
-            }
-        } catch (error) {
-            alert("网络连接失败，请检查网络或稍后再试。");
-            resetBtn();
-        }
-    }, 100);
-
-    function resetBtn() {
-        btn.innerText = originalText;
-        btn.disabled = false;
+    if (tab === 'login') {
+        loginTab.classList.add('active');
+        regTab.classList.remove('active');
+        loginForm.style.display = 'block';
+        regForm.style.display = 'none';
+    } else {
+        regTab.classList.add('active');
+        loginTab.classList.remove('active');
+        regForm.style.display = 'block';
+        loginForm.style.display = 'none';
     }
 }
 
-// 👇 新增：无梯子快捷登录逻辑 👇
-function showVpnModal() {
-    const modal = document.getElementById('vpn-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('active');
+function clearInput(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.value = '';
+        el.focus();
     }
 }
 
-function hideVpnModal() {
-    const modal = document.getElementById('vpn-modal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.classList.add('hidden');
-    }
+function togglePass(inputId, cb) {
+    document.getElementById(inputId).type = cb.checked ? 'text' : 'password';
 }
 
-async function quickLogin() {
-    const qq = document.getElementById('qq-input').value.trim();
-    const userCode = document.getElementById('code-input').value.trim();
-
-    if (!qq || !userCode) {
-        alert('请输入QQ号和激活码。');
-        return;
+function toast(msg) {
+    let t = document.getElementById('auth-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'auth-toast';
+        t.style.cssText = 'position:fixed;top:40px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 24px;border-radius:20px;font-size:12px;letter-spacing:1px;z-index:1000000000;opacity:0;transition:opacity 0.3s;pointer-events:none;';
+        document.body.appendChild(t);
     }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+}
 
-    // 直接写入激活状态，跳过网络验证
-    localStorage.setItem('ios_theme_activation_v2_fallback', 'true');
-    localStorage.setItem('current_bound_qq', qq);
-    localStorage.setItem('current_activation_code', userCode);
-    
-    const overlay = document.getElementById('activation-overlay');
-    if (overlay) overlay.style.display = 'none';
-    
-    hideVpnModal();
-    alert('快捷登录成功！欢迎使用。');
+// ===== 登录 =====
+async function handleLogin() {
+    const account = document.getElementById('login-account').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    if (!account) return toast('请输入账号');
+    if (!password) return toast('请输入密码');
 
     try {
-        await idb.set('ios_theme_activation_v2_status', {
-            activated: true,
-            qq: qq,
-            activationTime: new Date().toISOString()
-        });
-    } catch (dbError) {}
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(account)}&select=*`,
+            { headers: SUPABASE_HEADERS }
+        );
+
+        if (!res.ok) throw new Error('network');
+
+        const users = await res.json();
+
+        if (users.length === 0) {
+            return toast('账号不存在');
+        }
+
+        if (users[0].password !== password) {
+            return toast('密码错误');
+        }
+
+        // 登录成功
+        localStorage.setItem('app_login_state', 'logged_in');
+        localStorage.setItem('app_qq', account);
+        localStorage.setItem('app_pass', password);
+        localStorage.setItem('ios_theme_activation_v2_fallback', 'true');
+
+        document.getElementById('activation-overlay').style.display = 'none';
+        toast('登录成功 (´▽`ʃ♡ƪ)');
+
+    } catch (e) {
+        toast('网络错误，请稍后重试');
+    }
 }
-// 👆 新增结束 👆
+
+// ===== 注册 =====
+async function handleRegister() {
+    const qq = document.getElementById('reg-qq').value.trim();
+    const code = document.getElementById('reg-code').value.trim();
+    const pwd = document.getElementById('reg-password').value.trim();
+    const pwd2 = document.getElementById('reg-password-confirm').value.trim();
+
+    if (!qq) return toast('请输入QQ号');
+    if (!code) return toast('请输入激活码');
+    if (!pwd) return toast('请设置密码');
+    if (pwd.length < 6) return toast('密码至少6位');
+    if (pwd !== pwd2) return toast('两次密码不一致');
+
+    try {
+        // 1. 校验激活码
+        const codeRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/activation_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+            { headers: SUPABASE_HEADERS }
+        );
+
+        if (!codeRes.ok) throw new Error('network');
+
+        const codes = await codeRes.json();
+
+        if (codes.length === 0) {
+            return toast('激活码无效，请联系管理员');
+        }
+
+        const codeData = codes[0];
+        if (codeData.used) {
+            return toast('该激活码已被使用');
+        }
+        if (codeData.qq && codeData.qq !== qq) {
+            return toast('激活码与QQ号不匹配');
+        }
+
+        // 2. 检查 QQ 是否已注册
+        const userRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/users?qq=eq.${encodeURIComponent(qq)}&select=*`,
+            { headers: SUPABASE_HEADERS }
+        );
+
+        if (!userRes.ok) throw new Error('network');
+
+        const users = await userRes.json();
+        if (users.length > 0) {
+            return toast('该账号已注册，请直接登录');
+        }
+
+        // 3. 创建用户
+        const createRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/users`,
+            {
+                method: 'POST',
+                headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({
+                    qq: qq,
+                    password: pwd,
+                    activation_code: code,
+                    created_at: new Date().toISOString()
+                })
+            }
+        );
+
+        if (!createRes.ok) throw new Error('network');
+
+        // 4. 标记激活码已使用
+        await fetch(
+            `${SUPABASE_URL}/rest/v1/activation_codes?code=eq.${encodeURIComponent(code)}`,
+            {
+                method: 'PATCH',
+                headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ used: true, bound_qq: qq })
+            }
+        );
+
+        toast('注册成功！请返回登录 ₍˄·͈༝·˄˄₎');
+        setTimeout(() => switchTab('login'), 1200);
+
+    } catch (e) {
+        toast('网络错误，请稍后重试');
+    }
+}
 
 // 新增：退出登录与解绑函数 (已修复无法退出的Bug)
 async function unbindDevice() {
-    const qq = localStorage.getItem('current_bound_qq');
-    const deviceId = getDeviceId();
+    const qq = localStorage.getItem('app_qq');
 
-    if (!confirm("确定要退出登录并解绑当前设备吗？\n解绑后将腾出一个设备名额。")) {
+    if (!confirm("确定要退出登录吗？")) {
         return;
     }
 
-    if (qq) {
-        try {
-            // 你的专属解绑接口
-            const UNBIND_URL = 'https://activation-api.xingyan067.workers.dev/unbind';
-            
-            await fetch(UNBIND_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ qq: qq, deviceId: deviceId })
-            });
-        } catch (e) {
-            console.warn("通知服务器解绑失败，但本地仍会退出", e);
-        }
-    }
-
-    // 1. 清除浅层缓存
+    // 清除本地登录状态
+    localStorage.removeItem('app_login_state');
+    localStorage.removeItem('app_qq');
+    localStorage.removeItem('app_pass');
     localStorage.removeItem('ios_theme_activation_v2_fallback');
     localStorage.removeItem('current_bound_qq');
-    
-    // 2. 核心修复：用覆盖的方式清除深层数据库缓存！
+
     try {
         await idb.set('ios_theme_activation_v2_status', { activated: false });
-    } catch(e) {
-        console.error("清除深层缓存失败", e);
-    }
-    
-    alert("设备已解绑并退出登录！");
-    location.reload(); // 刷新页面，这次一定会回到激活界面了
+    } catch(e) {}
+
+    alert("已退出登录！");
+    location.reload();
 }
 
 /**
